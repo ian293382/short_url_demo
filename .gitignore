@@ -1,0 +1,17 @@
+# Python Cache
+__pycache__/
+*.pyc
+
+# Virtual Environment
+env/
+*.env
+
+# Logs
+*.log
+
+# Editor Settings
+.vscode/
+.idea/
+
+# Local Test Files
+tests/
