@@ -15,3 +15,6 @@ env/
 
 # Local Test Files
 tests/
+
+# Redis volume
+data/
