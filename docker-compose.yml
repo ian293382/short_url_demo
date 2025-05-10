@@ -14,10 +14,11 @@ services:
       - REDIS_PORT=6379
     restart: always
     healthcheck:
-      test: ["CMD", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 2s
+      timeout: 5s
       retries: 3
+      start_period: 5s
 
   redis:
     image: "redis:alpine"

@@ -12,8 +12,11 @@ WORKDIR /app
 COPY . . 
 
 # Update & Install package 
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt 
+RUN apt-get update && \
+    apt-get install -y curl && \
+    apt-get clean && \
+    pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Expose the application port
 EXPOSE 8000
