@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Image Build
-        run: docker build -t ian293382/shorturl-web:latest . 
+        run: docker build -t ian293382/shorturl-web:latest ./app
 
       - name: Validate Docker Compose
         run: docker compose -f docker-compose.yml config
