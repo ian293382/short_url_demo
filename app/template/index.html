@@ -19,36 +19,51 @@
         </div>
     </div>
 
-    <script>
-        const form = document.getElementById('shorten-form');
-        const resultDiv = document.getElementById('result');
-        const shortUrlElement = document.getElementById('short_url');
+<script>
+    const form = document.getElementById('shorten-form');
+    const resultDiv = document.getElementById('result');
+    const shortUrlElement = document.getElementById('short_url');
 
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const originalUrl = document.getElementById('original_url').value;
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const originalUrl = document.getElementById('original_url').value;
+        
+        try {
+            const response = await fetch('/api/shorten', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ original_url: originalUrl }),
+            });
             
-            try {
-                const response = await fetch('/api/shorten', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ original_url: originalUrl }),
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    shortUrlElement.href = data.short_url;
-                    shortUrlElement.textContent = data.short_url;
-                    resultDiv.classList.remove('hidden');
+            if (response.ok) {
+                const data = await response.json();
+                shortUrlElement.href = data.short_url;
+                shortUrlElement.textContent = data.short_url;
+                resultDiv.classList.remove('hidden');
+            } else {
+                const errorData = await response.json();
+
+                // 提取錯誤訊息 split , 取最後那段 
+                // "Value error, URL is too long (max 2048 characters)"
+                if (errorData.detail && Array.isArray(errorData.detail)) {
+                    const messages = errorData.detail.map(err => {
+                        const msg = err.msg || "Unknown error";
+                        return msg.split(",").slice(1).join(",").trim();
+                    }).join("\n");
+                    alert(messages);
                 } else {
                     alert("Error creating short URL. Please try again.");
                 }
-            } catch (error) {
-                console.error("Error:", error);
             }
-        });
-    </script>
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Network error. Please try again.");
+        }
+    });
+</script>
+
+
 </body>
 </html>

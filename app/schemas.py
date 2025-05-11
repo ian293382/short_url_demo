@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 
 # 健康檢查
@@ -12,7 +12,15 @@ class HealthCheck(BaseModel):
 
 # URL 縮短請求模型
 class ShortURLRequest(BaseModel):
-    original_url: str = Field(..., max_length=2048, title="original_url")
+    original_url: str = Field(..., title="original_url")
+    
+    # validate the URL format
+    @validator("original_url")
+    def validate_url_length(cls, v):
+        max_length = 2048
+        if len(v) > max_length:
+            raise ValueError(f"URL is too long (max {max_length} characters)")
+        return v
 
 
 # URL 縮短回應模型
