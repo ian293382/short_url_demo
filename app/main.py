@@ -3,7 +3,7 @@ import uvicorn
 import uuid
 from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException, status
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel, HttpUrl, Field
 from .utils import get_redis_client
 from redis.asyncio import RedisError, ValidationError
@@ -50,6 +50,19 @@ def get_health() -> HealthCheck:
         HealthCheck: Returns a JSON response with the health status
     """
     return HealthCheck(status="OK")
+
+
+# Home Page
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    """
+    ## Home Page
+    Serves the main HTML page for URL shortening.
+    """
+    template_path = os.path.join(
+        os.path.dirname(__file__), "template", "index.html"
+    )
+    return FileResponse(template_path)
 
 
 # 短網址服務設定
