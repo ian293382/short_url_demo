@@ -1,7 +1,9 @@
+import os
 import uvicorn
 import uuid
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, Request, HTTPException, status
+from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel, HttpUrl, Field
 from .utils import get_redis_client
 from redis.asyncio import RedisError, ValidationError
@@ -140,6 +142,29 @@ async def create_short_url(request: ShortURLRequest) -> ShortURLResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}",
+        )
+
+
+@app.get(
+    "/{short_id}",
+    tags=["redirect"],
+    summary="Redirect to Original URL",
+    response_description="Redirect to the original URL",
+    response_class=HTMLResponse,
+)
+async def redirect_to_original(short_id: str, request: Request):
+    try:
+        redis_client = await get_redis_client()
+        original_url = await redis_client.get(short_id)
+
+        if original_url is None:
+            return HTTPException(status_code=404, detail="Short URL not found")
+
+        # 返回跳轉頁面
+        return RedirectResponse(url=original_url)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error redirecting to original URL: {str(e)}"
         )
 
 
