@@ -1,33 +1,14 @@
 import os
 import uvicorn
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
-from pydantic import BaseModel, HttpUrl, Field
 from .utils import get_redis_client
-from redis.asyncio import RedisError, ValidationError
+from .schemas import HealthCheck, ShortURLRequest, ShortURLResponse
+from redis.asyncio import RedisError
 
 app = FastAPI()
-
-
-# URL 縮短請求模型
-class ShortURLRequest(BaseModel):
-    original_url: HttpUrl = Field(..., max_length=2048)
-
-
-# URL 縮短回應模型
-class ShortURLResponse(BaseModel):
-    short_url: str
-    expiration_date: datetime
-    success: bool = True
-    reason: str = ""
-
-
-class HealthCheck(BaseModel):
-    """Response model to validate and return when performing a health check."""
-
-    status: str = "OK"
 
 
 @app.get(
@@ -138,12 +119,15 @@ async def create_short_url(request: ShortURLRequest) -> ShortURLResponse:
     try:
         short_id = uuid.uuid4().hex[:8]
         short_url = f"http://localhost:8000/{short_id}"
+        expiration_date = datetime.utcnow() + timedelta(days=30)  # 設置過期時間
         redis_client = await get_redis_client()
         await redis_client.setex(short_id, 60 * 60 * 24 * 30, request.original_url)
-        return {"short_url": short_url}
-
-    except ValidationError as ve:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+        return {
+            "short_url": short_url,
+            "expiration_date": expiration_date,
+            "success": True,
+            "reason": None,
+        }
 
     except RedisError as re:
         raise HTTPException(
@@ -156,7 +140,6 @@ async def create_short_url(request: ShortURLRequest) -> ShortURLResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}",
         )
-
 
 @app.get(
     "/{short_id}",
