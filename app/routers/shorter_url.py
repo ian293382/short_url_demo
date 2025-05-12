@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, status, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
+from typing import Optional
 from redis.asyncio import RedisError
 from ..rate_limiter import enforce_rate_limit
 from ..utils import get_redis_client
@@ -25,6 +26,31 @@ def handle_error(exception: Exception):
         raise HTTPException(status_code=500, detail="Unexpected server error")
 
 
+async def get_original_url(short_id: str) -> Optional[str]:
+    try:
+        redis_client = await get_redis_client()
+        
+        # 先嘗試用 short_id 查找對應的原始 URL
+        original_url = await redis_client.get(short_id)
+        
+        # 如果沒有找到，返回 None
+        if original_url is None:
+            raise HTTPException(status_code=404, detail="Short URL not found")
+        
+        return original_url
+    
+    except RedisError as re:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Redis server unavailable: {str(re)}"
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error: {str(e)}"
+        )
+
 
 @router.post(
     "/api/shorten",
@@ -35,17 +61,29 @@ def handle_error(exception: Exception):
 )
 async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLResponse:
     await enforce_rate_limit(request)
+
     try:
-        short_id = uuid.uuid4().hex[:8]
-        short_url = f"http://localhost:8000/{short_id}"
-        expiration_date = datetime.now() + timedelta(days=30) 
         redis_client = await get_redis_client()
-        # save DB
-        await redis_client.setex(
-            short_id, 60 * 60 * 24 * 30,
-            body.original_url
-        )
+        original_url = body.original_url
         
+        # 檢查是否已有相同 URL
+        existing_short_id = await redis_client.get(f"url_mapping:{original_url}")
+        
+        if existing_short_id:
+            # 刷新過期時間
+            await redis_client.expire(existing_short_id, EXPIRATION_SECOND)
+            expiration_date = datetime.now() + timedelta(seconds=EXPIRATION_SECOND)
+            short_url = f"http://localhost:8000/{existing_short_id}"
+        else:
+            # 產生新的短網址
+            short_id = uuid.uuid4().hex[:8]
+            short_url = f"http://localhost:8000/{short_id}"
+            expiration_date = datetime.now() + timedelta(seconds=EXPIRATION_SECOND)
+            
+            # 儲存短網址和對應的原始 URL
+            await redis_client.setex(short_id, EXPIRATION_SECOND, original_url)
+            await redis_client.setex(f"url_mapping:{original_url}", EXPIRATION_SECOND, short_id)
+
         return {
             "short_url": short_url,
             "expiration_date": expiration_date,
@@ -53,24 +91,11 @@ async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLR
             "reason": None,
         }
     
-    except ValueError as ve:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(ve),
-        )
-        
-    except RedisError as re:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Redis error: {str(re)}",
-        )
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}",
         )
-
 
 @router.get(
     "/{short_id}",
