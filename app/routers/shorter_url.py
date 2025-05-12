@@ -2,9 +2,11 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, status, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
+from redis.asyncio import RedisError
+from ..rate_limiter import enforce_rate_limit
 from ..utils import get_redis_client
 from ..schemas import ShortURLRequest, ShortURLResponse
-from redis.asyncio import RedisError
+
 
 router = APIRouter(tags=["shorter_url"])
 
@@ -14,21 +16,14 @@ EXPIRATION_SECOND = 600  # 預設過期時間
 RATE_LIMIT = 100  # 預設速率限制
 
 
-async def enforce_rate_limit(
-    redis_client, client_ip: str, limit: int = 10, window: int = 60
-) -> None:
-    rate_limit_key = f"rate_limit:{client_ip}"
-    current_count = await redis_client.get(rate_limit_key)
-
-    # limit access to 10 requests per minute
-    if current_count is None:
-        await redis_client.setex(rate_limit_key, window, 1)
-    elif int(current_count) >= limit:
-        raise HTTPException(
-            status_code=429, detail="Too many requests.Please try again later."
-        )
+def handle_error(exception: Exception):
+    if isinstance(exception, ValueError):
+        raise HTTPException(status_code=400, detail=str(exception))
+    elif isinstance(exception, RedisError):
+        raise HTTPException(status_code=503, detail="Redis server unavailable")
     else:
-        await redis_client.incr(rate_limit_key)
+        raise HTTPException(status_code=500, detail="Unexpected server error")
+
 
 
 @router.post(
@@ -38,7 +33,8 @@ async def enforce_rate_limit(
     status_code=status.HTTP_201_CREATED,
     response_model=ShortURLResponse,
 )
-async def create_short_url(request: ShortURLRequest) -> ShortURLResponse:
+async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLResponse:
+    await enforce_rate_limit(request)
     try:
         short_id = uuid.uuid4().hex[:8]
         short_url = f"http://localhost:8000/{short_id}"
@@ -47,7 +43,7 @@ async def create_short_url(request: ShortURLRequest) -> ShortURLResponse:
         # save DB
         await redis_client.setex(
             short_id, 60 * 60 * 24 * 30,
-            request.original_url
+            body.original_url
         )
         
         return {
