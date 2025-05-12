@@ -13,8 +13,7 @@ router = APIRouter(tags=["shorter_url"])
 
 
 # 短網址服務設定
-EXPIRATION_SECOND = 600  # 預設過期時間
-RATE_LIMIT = 100  # 預設速率限制
+EXPIRATION_SECOND = 60*60*24*30  # 預設過期時間 30 天
 
 
 def handle_error(exception: Exception):
@@ -29,16 +28,11 @@ def handle_error(exception: Exception):
 async def get_original_url(short_id: str) -> Optional[str]:
     try:
         redis_client = await get_redis_client()
-        
-        # 先嘗試用 short_id 查找對應的原始 URL
         original_url = await redis_client.get(short_id)
         
-        # 如果沒有找到，返回 None
         if original_url is None:
             raise HTTPException(status_code=404, detail="Short URL not found")
-        
         return original_url
-    
     except RedisError as re:
         raise HTTPException(
             status_code=503,
@@ -66,21 +60,17 @@ async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLR
         redis_client = await get_redis_client()
         original_url = body.original_url
         
-        # 檢查是否已有相同 URL
         existing_short_id = await redis_client.get(f"url_mapping:{original_url}")
         
         if existing_short_id:
-            # 刷新過期時間
             await redis_client.expire(existing_short_id, EXPIRATION_SECOND)
             expiration_date = datetime.now() + timedelta(seconds=EXPIRATION_SECOND)
             short_url = f"http://localhost:8000/{existing_short_id}"
         else:
-            # 產生新的短網址
             short_id = uuid.uuid4().hex[:8]
             short_url = f"http://localhost:8000/{short_id}"
             expiration_date = datetime.now() + timedelta(seconds=EXPIRATION_SECOND)
             
-            # 儲存短網址和對應的原始 URL
             await redis_client.setex(short_id, EXPIRATION_SECOND, original_url)
             await redis_client.setex(f"url_mapping:{original_url}", EXPIRATION_SECOND, short_id)
 
@@ -97,6 +87,7 @@ async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLR
             detail=f"Unexpected error: {str(e)}",
         )
 
+
 @router.get(
     "/{short_id}",
     summary="Redirect to Original URL",
@@ -105,14 +96,13 @@ async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLR
 )
 async def redirect_to_original(short_id: str, request: Request):
     try:
-        redis_client = await get_redis_client()
-        original_url = await redis_client.get(short_id)
-
-        if original_url is None:
-            return HTTPException(status_code=404, detail="Short URL not found")
-
-        # 返回跳轉頁面
+        # 使用封裝的查找函數
+        original_url = await get_original_url(short_id)
         return RedirectResponse(url=original_url)
+    
+    except HTTPException as e:
+        raise e 
+    
     except Exception as e:
         raise HTTPException(
             status_code=500,
