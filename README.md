@@ -1,4 +1,4 @@
-### **📝 Short URL Demo - User Guide **
+### ** Short URL Demo - User Guide **
 
 ---
 
@@ -23,7 +23,7 @@ short_url_demo/
 
 ---
 
-### **📦 1. Project Setup**
+### ** 1. Project Setup**
 
 1. **Clone the project**
 
@@ -40,7 +40,7 @@ Make sure Docker is installed. If not, follow the official guide:
 
 ---
 
-### **🔨 2. Build Docker Images**
+### ** 2. Build Docker Images**
 
 #### **2.1 Build Web Service Image**
 
@@ -82,7 +82,7 @@ ian293382/shorturl-web   latest    e61e35d72c61   14 hours ago   182MB
 redis                    alpine    67ae465a4123   8 days ago     60.5MB
 ```
 
-### **🚀 3. Start Docker Compose**
+### ** 3. Start Docker Compose**
 
 Run the following command in the project root directory:
 
@@ -102,17 +102,19 @@ Successful startup example:
 
 ---
 
-### **🔗 4. API Test the Short URL Service**
+### ** 4. API Test the Short URL Service**
 
 #### **4.1 Create a Short URL**
 
-* **API Endpoint**: `http://localhost:8000/docs`
+* **API Endpoint**: `http://{YOUR_VM_IP}:8000/docs`
+OR `https://app.swaggerhub.com/apis-docs/MOSHOU5571228/short_url/1.0.0`
 
 You can use the interactive Swagger UI for testing.
 
 #### **4.2 Short URL Redirection**
 
 * **Example**: `http://{YOUR_VM_IP}:8000/abcd1234`
+* Avoid localhost:8000 in production, otherwise rate limiting and Redis data tracking may fail.
 
 ---
 
@@ -134,7 +136,7 @@ short_url_demo-redis-1   Running  (healthy)
 
 ---
 
-### **🗑️ 6. Stop and Clean Up**
+### ** 6. Stop and Clean Up**
 
 Stop and remove all containers:
 
@@ -144,7 +146,7 @@ docker compose down
 
 ---
 
-### **📚 7. Additional Information**
+### ** 7. Additional Information**
 
 * **View Container Logs**
 
@@ -164,13 +166,27 @@ docker compose exec web bash
 docker compose exec redis sh
 redis-cli
 ping
-```
 
+```
+Redis Manual Check:
+https://www.youtube.com/watch?v=dQw4w9WgXcQ Use in '/api/shorten'
+```
+127.0.0.1:6379> get url_mapping:https://www.youtube.com/watch?v=dQw4w9WgXcQ
+"d71c4ee8"
+127.0.0.1:6379> get d71c4ee8
+"https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+127.0.0.1:6379> 
+```
 ---
 
-### **📧 8. Contact**
+### ** 8. Contact**
 
 If you have any questions, feel free to reach out:
 
 * **GitHub**: [ian293382](https://github.com/ian293382)
 * **Docker Hub**: [ian293382](https://hub.docker.com/u/ian293382)
+
+###　what is next?
+- Implement postgresql as to LAMP (Linux/nginx(Apache)/MySQL/PHP (Python))
+- Implement nginx for rate limit from ref
+- Write docker swarm init to use 3 nodes working.
