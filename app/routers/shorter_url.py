@@ -31,19 +31,12 @@ async def get_original_url(short_id: str) -> Optional[str]:
         original_url = await redis_client.get(short_id)
         
         if original_url is None:
-            raise HTTPException(status_code=404, detail="Short URL not found")
+            raise KeyError(f"Short URL '{short_id}' not found")
+        
         return original_url
-    except RedisError as re:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Redis server unavailable: {str(re)}"
-        )
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unexpected error: {str(e)}"
-        )
+        handle_error(e)
 
 
 @router.post(
@@ -82,10 +75,10 @@ async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLR
         }
     
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {str(e)}",
-        )
+        return {
+            "success": False,
+            "reason": handle_error(e),
+        }
 
 
 @router.get(
@@ -99,12 +92,6 @@ async def redirect_to_original(short_id: str, request: Request):
         # 使用封裝的查找函數
         original_url = await get_original_url(short_id)
         return RedirectResponse(url=original_url)
-    
-    except HTTPException as e:
-        raise e 
-    
+   
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error redirecting to original URL: {str(e)}"
-        )
+        handle_error(e)

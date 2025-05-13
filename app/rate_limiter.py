@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import Request, HTTPException
 from .utils import get_redis_client
 
-RATE_LIMIT = 6  # 每分鐘最多 10 次
+RATE_LIMIT = 4  # 每分鐘最多 4 次
 
 
 async def limit_user_requests(request: Request) -> None:
