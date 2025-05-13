@@ -10,27 +10,31 @@ async def limit_user_requests(request: Request) -> None:
     '''
     Ref: https://dev.to/dpills/how-to-rate-limit-fastapi-with-redis-1dhf
 
-    step 1. Get user info and process hash (secret protected), add datetime string append
-    step 2. Generate redis key for user info and increment count
-    step 3. On the first request, set expiration to "now + 1 minute"
-    step 4. If the count > RATE_LIMIT, raise error
+    step 1. Get user IP address
+    step 2. Generate a unique key for this IP + current minute
+    step 3. Increment the visit count for this key in Redis
+    step 4. If it's the first visit, set a 1-minute expiration time
+    step 5. If the count exceeds the limit, raise a 429 error
     '''
     redis_client = await get_redis_client()
-    user_id = request.headers.get("x-user", "anonymous")
-    username_hash = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+
+    # **取得用戶 IP 地址**
+    client_ip = request.client.host
+    if not client_ip:
+        raise HTTPException(status_code=400, detail="Invalid client IP")
     
-    now = datetime.now()
-    current_minute = now.strftime("%Y-%m-%dT%H:%M")
+    # **產生 Redis Key**（根據 client_ip 和當前分鐘）
+    current_minute = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    key = f"rate_limit_{client_ip}_{current_minute}"
     
-    # 產生 Redis Key
-    redis_key = f"rate_limit_{username_hash}_{current_minute}"
-    current_count = await redis_client.incr(redis_key)
+    current_count = await redis_client.incr(key)
     
     if current_count == 1:
-        expire_at_timestamp = int((now + timedelta(minutes=1)).timestamp())
-        await redis_client.expireat(redis_key, expire_at_timestamp)
+        expire_at_timestamp = int((datetime.now() + timedelta(minutes=1)).timestamp())
+        await redis_client.expireat(key, expire_at_timestamp)
+
     if current_count > RATE_LIMIT:
-        retry_after = 60 - now.second
+        retry_after = 60 - datetime.now().second
         raise HTTPException(
             status_code=429,
             detail="User Rate Limit Exceeded",
