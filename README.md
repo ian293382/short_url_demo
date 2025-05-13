@@ -143,11 +143,25 @@ Stop and remove all containers:
 ```bash
 docker compose down
 ```
+* **Clean up Docker container**
 
 ```bash
-docker container rm $(docker)
-```
+# Remove All container
+docker container rm $(docker container ls -a)
+or
+docker container rm {ID}
 
+docker container ls -a
+```
+* **Clean up Docker Imager**
+
+```
+docker image prune 
+```
+* **Clean up Docker system**
+```
+docker system prune 
+```
 ---
 
 ### ** 7. Additional Information**
@@ -191,6 +205,8 @@ If you have any questions, feel free to reach out:
 * **Docker Hub**: [ian293382](https://hub.docker.com/u/ian293382)
 
 ###　what is next?
+- Implement Dockerfile network to working (network-backend)
 - Implement postgresql as to LAMP (Linux/nginx(Apache)/MySQL/PHP (Python))
 - Implement nginx for rate limit from ref
 - Write docker swarm init to use 3 nodes working.
+- Installing Vue or React to frontend
