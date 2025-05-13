@@ -2,7 +2,6 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, status, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
-from typing import Optional
 from redis.asyncio import RedisError
 from ..rate_limiter import limit_user_requests
 from ..utils import get_redis_client
@@ -31,7 +30,10 @@ def handle_error(exception: Exception):
     status_code=status.HTTP_201_CREATED,
     response_model=ShortURLResponse,
 )
-async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLResponse:
+async def create_short_url(
+        request: Request,
+        body: ShortURLRequest
+) -> ShortURLResponse:
 
     await limit_user_requests(request)
 
@@ -47,7 +49,10 @@ async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLR
             short_id = uuid.uuid4().hex[:8]
             # **Create Redis Data to mapping**
             await redis_client.setex(short_id, EXPIRATION_SECOND, original_url)
-            await redis_client.setex(f"url_mapping:{original_url}", EXPIRATION_SECOND, short_id)
+            await redis_client.setex(
+                                     f"url_mapping:{original_url}",
+                                     EXPIRATION_SECOND, short_id
+                            )
 
         # **always renew expiration**
         expiration_date = datetime.now() + timedelta(seconds=EXPIRATION_SECOND)
@@ -60,13 +65,12 @@ async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLR
             "success": True,
             "reason": None,
         }
-    
     except Exception as e:
         return {
             "success": False,
             "reason": handle_error(e),
-        }
-    
+        }    
+        
 
 @router.get(
     "/{short_id}",
@@ -78,11 +82,8 @@ async def redirect_to_original(short_id: str, request: Request):
     try:
         redis_client = await get_redis_client()
         original_url = await redis_client.get(short_id)
-        
         if original_url is None:
             raise HTTPException(status_code=404, detail="Short URL not found")
-        
         return RedirectResponse(url=original_url)
-   
     except Exception as e:
         handle_error(e)
