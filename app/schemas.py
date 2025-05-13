@@ -3,18 +3,16 @@ from datetime import datetime
 from pydantic import BaseModel, Field, validator
 
 
-# 健康檢查
 class HealthCheck(BaseModel):
     """Response model to validate and return when performing a health check."""
 
     status: str = "OK"
 
 
-# URL 縮短請求模型
 class ShortURLRequest(BaseModel):
     original_url: str = Field(..., title="original_url")
     
-    # validate the URL format
+    # validate the URL format 
     @validator("original_url")
     def validate_url_length(cls, v):
         max_length = 2048
@@ -23,7 +21,6 @@ class ShortURLRequest(BaseModel):
         return v
 
 
-# URL 縮短回應模型
 class ShortURLResponse(BaseModel):
     short_url: str = Field(..., title='short_url')
     expiration_date: datetime = Field(..., title='expiration_date')
