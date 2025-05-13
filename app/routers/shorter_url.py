@@ -4,7 +4,7 @@ from fastapi import APIRouter, status, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from typing import Optional
 from redis.asyncio import RedisError
-from ..rate_limiter import enforce_rate_limit
+from ..rate_limiter import limit_user_requests
 from ..utils import get_redis_client
 from ..schemas import ShortURLRequest, ShortURLResponse
 
@@ -54,7 +54,7 @@ async def get_original_url(short_id: str) -> Optional[str]:
     response_model=ShortURLResponse,
 )
 async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLResponse:
-    await enforce_rate_limit(request)
+    await limit_user_requests(request)
 
     try:
         redis_client = await get_redis_client()

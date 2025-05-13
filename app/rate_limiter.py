@@ -3,10 +3,18 @@ from datetime import datetime, timedelta
 from fastapi import Request, HTTPException
 from .utils import get_redis_client
 
-RATE_LIMIT = 10  # 每分鐘最多 10 次
+RATE_LIMIT = 6  # 每分鐘最多 10 次
 
 
-async def enforce_rate_limit(request: Request) -> None:
+async def limit_user_requests(request: Request) -> None:
+    '''
+    Ref: https://dev.to/dpills/how-to-rate-limit-fastapi-with-redis-1dhf
+
+    step 1. Get user info and process hash (secret protected), add datetime string append
+    step 2. Generate redis key for user info and increment count
+    step 3. On the first request, set expiration to "now + 1 minute"
+    step 4. If the count > RATE_LIMIT, raise error
+    '''
     redis_client = await get_redis_client()
     user_id = request.headers.get("x-user", "anonymous")
     username_hash = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
