@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import Request, HTTPException
 from .utils import get_redis_client
 
-RATE_LIMIT = 4  # 每分鐘最多 4 次
+RATE_LIMIT = 4  # 4 times for pre minute
 
 
 async def limit_user_requests(request: Request) -> None:
@@ -18,12 +18,10 @@ async def limit_user_requests(request: Request) -> None:
     '''
     redis_client = await get_redis_client()
 
-    # **取得用戶 IP 地址**
     client_ip = request.client.host
     if not client_ip:
         raise HTTPException(status_code=400, detail="Invalid client IP")
     
-    # **產生 Redis Key**（根據 client_ip 和當前分鐘）
     current_minute = datetime.now().strftime("%Y-%m-%dT%H:%M")
     key = f"rate_limit_{client_ip}_{current_minute}"
     
