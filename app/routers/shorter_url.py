@@ -11,7 +11,7 @@ from ..schemas import ShortURLRequest, ShortURLResponse
 router = APIRouter(tags=["shorter_url"])
 
 
-EXPIRATION_SECOND = 60*60*24*30  # default: 30 DAYS
+EXPIRATION_SECOND = 60 * 60 * 24 * 30  # default: 30 DAYS
 
 
 def handle_error(exception: Exception):
@@ -30,17 +30,14 @@ def handle_error(exception: Exception):
     status_code=status.HTTP_201_CREATED,
     response_model=ShortURLResponse,
 )
-async def create_short_url(
-        request: Request,
-        body: ShortURLRequest
-) -> ShortURLResponse:
+async def create_short_url(request: Request, body: ShortURLRequest) -> ShortURLResponse:
 
     await limit_user_requests(request)
 
     try:
         redis_client = await get_redis_client()
         original_url = body.original_url
-        
+
         # **Inspect origin_url is exist**
         existing_short_id = await redis_client.get(f"url_mapping:{original_url}")
         if existing_short_id:
@@ -50,9 +47,8 @@ async def create_short_url(
             # **Create Redis Data to mapping**
             await redis_client.setex(short_id, EXPIRATION_SECOND, original_url)
             await redis_client.setex(
-                                     f"url_mapping:{original_url}",
-                                     EXPIRATION_SECOND, short_id
-                            )
+                f"url_mapping:{original_url}", EXPIRATION_SECOND, short_id
+            )
 
         # **always renew expiration**
         expiration_date = datetime.now() + timedelta(seconds=EXPIRATION_SECOND)
@@ -69,8 +65,8 @@ async def create_short_url(
         return {
             "success": False,
             "reason": handle_error(e),
-        }    
-        
+        }
+
 
 @router.get(
     "/{short_id}",
