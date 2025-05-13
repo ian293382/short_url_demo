@@ -40,7 +40,7 @@ Make sure Docker is installed. If not, follow the official guide:
 
 ---
 
-### ** 2. Build Docker Images**
+### **Part 2. Build Docker Images**
 
 #### **2.1 Build Web Service Image**
 
@@ -142,6 +142,10 @@ Stop and remove all containers:
 
 ```bash
 docker compose down
+```
+
+```bash
+docker container rm $(docker)
 ```
 
 ---
