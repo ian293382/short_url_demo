@@ -14,11 +14,13 @@
 short_url_demo/
 ├── app/                # FastAPI application
 │   ├── main.py         # Main entry point
-│   ├── routers/        # API routes
-│   └── utils/          # Utility functions
+│   ├── routers/        # API routes (Feature)
+│   ├── utils.py        # Redis functions
+│   ├── rate_limiter.py # Rate_limit function
+│   └── Dockerfile      # DockerFile Building short-web-url Image
 ├── docker-compose.yml  # Docker Compose configuration
 ├── README.md           # User guide
-└── data/               # Redis persistent data
+└── data/               # Redis persistent data (Docker Volume)
 ```
 
 ---
